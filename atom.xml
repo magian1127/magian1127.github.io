@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://94zl.com</id>
+    <title>94zl</title>
+    <updated>2023-07-08T08:05:52.292Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://94zl.com"/>
+    <link rel="self" href="https://94zl.com/atom.xml"/>
+    <subtitle>随便记录点什么 - Magian</subtitle>
+    <logo>https://94zl.com/images/avatar.png</logo>
+    <icon>https://94zl.com/favicon.ico</icon>
+    <rights>All rights reserved 2023, 94zl</rights>
+    <entry>
+        <title type="html"><![CDATA[解决 VS2022 .NET 7 项目中的 T4 模版无法引用其他程序集的问题]]></title>
+        <id>https://94zl.com/post/jie-jue-vs2022-net-7-xiang-mu-zhong-de-t4-mo-ban-wu-fa-yin-yong-qi-ta-cheng-xu-ji-de-wen-ti/</id>
+        <link href="https://94zl.com/post/jie-jue-vs2022-net-7-xiang-mu-zhong-de-t4-mo-ban-wu-fa-yin-yong-qi-ta-cheng-xu-ji-de-wen-ti/">
+        </link>
+        <updated>2023-05-22T08:45:55.000Z</updated>
+        <content type="html"><![CDATA[<p>搜索 <code>devenv.exe.config</code> 文件.<br>
+一般在 <code>C:\Program Files\Microsoft Visual Studio\2022\*\Common7\IDE\devenv.exe.config</code><br>
+修改无效的话再修改AppData下的<br>
+<code>C:\Users\*\AppData\Local\Microsoft\VisualStudio\17.0_*\devenv.exe.config</code></p>
+<p>在这个XML中的 assemblyBinding (<code>configuration -&gt; runtime -&gt; assemblyBinding</code>) 中添加</p>
+<pre><code class="language-xml">&lt;dependentAssembly&gt;
+  &lt;assemblyIdentity name=&quot;System.Runtime&quot; publicKeyToken=&quot;b03f5f7f11d50a3a&quot; culture=&quot;neutral&quot;/&gt;
+  &lt;bindingRedirect oldVersion=&quot;0.0.0.0-7.0.0.0&quot; newVersion=&quot;4.0.0.0&quot;/&gt;
+&lt;/dependentAssembly&gt;
+</code></pre>
+<p>可能是VS2022 默认还是用的 .net framework 的绑定的DLL,所以把 System.Runtime 任何版本的DLL都指定到 framework4 的DLL.</p>
+<p>当你再T4使用反射的类库的时候,还是会报类似的错误.再引入下面部分,可以解决一定的问题.</p>
+<pre><code class="language-xml">&lt;dependentAssembly&gt;
+  &lt;assemblyIdentity name=&quot;System.ComponentModel.Primitives&quot; publicKeyToken=&quot;b03f5f7f11d50a3a&quot; culture=&quot;neutral&quot;/&gt;
+  &lt;bindingRedirect oldVersion=&quot;0.0.0.0-7.0.0.0&quot; newVersion=&quot;4.0.0.0&quot;/&gt;
+&lt;/dependentAssembly&gt;
+</code></pre>
+<p>但是当7.0的的类库和 4.0 的API不同的时候,这个方法就没用了.所以部分反射的方法还是会报错.<br>
+比如<code>System.ComponentModel.TypeConverter</code> 你按照上面方法加入了也没用.<br>
+目前只能避免使用了,自己写方法来解决.</p>
+<p>参考 https://stackoverflow.com/questions/51550265/</p>
+<p>发布 <a href="https://94zl.com">94zl.com</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[树莓派4  安装 Home Assistant Supervised]]></title>
+        <id>https://94zl.com/post/shu-mei-pai-4-raspberry-pi-os-an-zhuang-home-assistant-supervised/</id>
+        <link href="https://94zl.com/post/shu-mei-pai-4-raspberry-pi-os-an-zhuang-home-assistant-supervised/">
+        </link>
+        <updated>2023-03-27T02:51:32.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="默认先决条件">默认先决条件</h2>
+<p>Raspberry Pi OS 64 (debian11)<br>
+已经安装了Docker<br>
+停用冲突的容器,如Portainer<br>
+已拥有梯子</p>
+<h2 id="预编写networkmanager的配置">预编写NetworkManager的配置</h2>
+<p>创建配置目录和文件<br>
+<code>sudo mkdir -p /etc/NetworkManager/conf.d/</code><br>
+对文件追加内容<br>
+<code>sudo nano /etc/NetworkManager/conf.d/100-disable-wifi-mac-randomization.conf</code></p>
+<pre><code>[connection]
+wifi.mac-address-randomization=1
+
+[device]
+wifi.scan-rand-mac-address=no
+</code></pre>
+<h2 id="安装-ha-依赖项">安装 HA 依赖项</h2>
+<pre><code>sudo apt install \
+apparmor \
+jq \
+wget \
+curl \
+udisks2 \
+libglib2.0-bin \
+network-manager \
+dbus \
+lsb-release \
+systemd-journal-remote -y
+</code></pre>
+<h2 id="切换-docker-到-cgroup-v1">切换 Docker 到 Cgroup v1</h2>
+<p>编辑内核配置文件<br>
+<code>sudo nano /boot/cmdline.txt</code><br>
+在末尾添加(不要换行)<br>
+<code>systemd.unified_cgroup_hierarchy=false lsm=apparmor</code></p>
+<h2 id="安装-ha-os-agent">安装 HA OS-Agent</h2>
+<pre><code>wget https://github.com/home-assistant/os-agent/releases/download/1.5.1/os-agent_1.5.1_linux_aarch64.deb
+sudo dpkg -i os-agent_1.5.1_linux_aarch64.deb
+</code></pre>
+<p>安装失败的话,可以直接到桌面系统找到deb双击运行</p>
+<p>检查是否安装成功<br>
+<code>gdbus introspect --system --dest io.hass.os --object-path /io/hass/os</code><br>
+输出完整JSON配置文件,并且没有报错,就算成功了</p>
+<h2 id="重启系统">重启系统</h2>
+<p><code>reboot</code></p>
+<h2 id="安装-home-assistant-supervised">安装 Home Assistant Supervised</h2>
+<pre><code>wget https://github.com/home-assistant/supervised-installer/releases/latest/download/homeassistant-supervised.deb
+sudo apt install ./homeassistant-supervised.deb
+</code></pre>
+<p>安装过程中弹出 界面 选择 <code>raspberrypi4-64</code></p>
+<p>安装完毕后查看系统日志<br>
+<code>journalctl -f</code><br>
+等红色的日志差不多没了 HA 也就初始化好了.</p>
+<h2 id="其他可选">其他(可选)</h2>
+<p>安装 Home Assistant Community Store<br>
+进入容器homeassistant的命令行<br>
+<code>sudo docker exec -it homeassistant bash</code><br>
+下载并直接安装 (2选1)<br>
+原版本 <code>wget -O - https://get.hacs.xyz | bash -</code><br>
+极速版 <code>wget -O - https://hacs.vip/get | HUB_DOMAIN=ghproxy.com/github.com bash -</code></p>
+<p>禁用DNS回退<br>
+<code>sudo ha dns options --fallback=false</code></p>
+<hr>
+<p>参考<br>
+https://zhuanlan.zhihu.com/p/498773266<br>
+https://blog.csdn.net/jeffen0428/article/details/127768637<br>
+https://github.com/home-assistant/supervised-installer</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Visual Studio 2022/Code 直接运行调试 Godot4 C# 项目]]></title>
+        <id>https://94zl.com/post/visual-studio-2022-zhi-jie-yun-xing-diao-shi-godot4-c-xiang-mu/</id>
+        <link href="https://94zl.com/post/visual-studio-2022-zhi-jie-yun-xing-diao-shi-godot4-c-xiang-mu/">
+        </link>
+        <updated>2023-03-12T09:36:48.000Z</updated>
+        <summary type="html"><![CDATA[<h2 id="godot">Godot</h2>
+<p>1 在 Godot 创建任意 C# 脚本文件</p>
+<p>2 在 Godot 中构筑项目<br>
+<img src="https://94zl.com/post-images/1678614049448.png" alt="" loading="lazy"></p>
+]]></summary>
+        <content type="html"><![CDATA[<h2 id="godot">Godot</h2>
+<p>1 在 Godot 创建任意 C# 脚本文件</p>
+<p>2 在 Godot 中构筑项目<br>
+<img src="https://94zl.com/post-images/1678614049448.png" alt="" loading="lazy"></p>
+<!-- more -->
+<h2 id="visual-studio-2022">Visual Studio 2022</h2>
+<h3 id="方法-1">方法 1</h3>
+<p>3 VS打开你刚才构筑的项目, 编辑 .csproj 文件(直接点一下解决方案里的C#项目会自动打开).加入如下代码</p>
+<pre><code>  &lt;PropertyGroup&gt;
+    &lt;StartAction&gt;Program&lt;/StartAction&gt;
+    &lt;StartProgram&gt;C:\Soft\Godot\Godot.exe&lt;/StartProgram&gt;
+    &lt;StartArguments&gt;--path $(SolutionDir) &amp;gt; godot.log 2&amp;gt;&lt;/StartArguments&gt;
+  &lt;/PropertyGroup&gt;
+</code></pre>
+<p>其中的 <code>C:\Soft\Godot\Godot.exe</code> 改成自己电脑的路径<br>
+<img src="https://94zl.com/post-images/1678614535670.png" alt="" loading="lazy"></p>
+<p>4 现在可以在 VS 中直接运行和调试 Godot 项目了.</p>
+<h3 id="方法-2">方法 2</h3>
+<p>3 选择调试属性<br>
+<img src="https://94zl.com/post-images/1688803011858.png" alt="" loading="lazy"></p>
+<p>4 创建可执行文件<br>
+<img src="https://94zl.com/post-images/1688803075776.png" alt="" loading="lazy"></p>
+<p>5 填入参数<br>
+<img src="https://94zl.com/post-images/1688803226856.png" alt="" loading="lazy"><br>
+命令行参数 中的 <code>&gt; godot.log</code> 是把 Godot 的输出信息(如GD.Print)记录到文本文件.<br>
+如果想在运行的时候直接看到,可以把 可执行文件 选 Godot 的 console.exe.</p>
+<!-- more -->
+<h2 id="visual-studio-code">Visual Studio Code</h2>
+<p>3 Code打开你刚才构筑的项目,并打开 <code>.vscode</code> 文件夹<br>
+<img src="https://94zl.com/post-images/1678764941417.png" alt="" loading="lazy"></p>
+<p>4 修改或创建 <code>launch.json</code></p>
+<pre><code>{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    &quot;version&quot;: &quot;0.2.0&quot;,
+    &quot;configurations&quot;: [
+        {
+            &quot;name&quot;: &quot;Play&quot;,
+            &quot;type&quot;: &quot;coreclr&quot;,
+            &quot;request&quot;: &quot;launch&quot;,
+            &quot;preLaunchTask&quot;: &quot;build&quot;,
+            &quot;program&quot;: &quot;C:\\Soft\\Godot\\Godot.exe&quot;,
+            &quot;args&quot;: [],
+            &quot;cwd&quot;: &quot;${workspaceFolder}&quot;,
+            &quot;stopAtEntry&quot;: false
+        }
+    ]
+}
+</code></pre>
+<p>5 修改或创建 <code>tasks.json</code></p>
+<pre><code>{
+  &quot;version&quot;: &quot;2.0.0&quot;,
+  &quot;tasks&quot;: [
+    {
+      &quot;label&quot;: &quot;build&quot;,
+      &quot;command&quot;: &quot;dotnet&quot;,
+      &quot;type&quot;: &quot;process&quot;,
+      &quot;args&quot;: [
+        &quot;build&quot;
+      ],
+      &quot;problemMatcher&quot;: &quot;$msCompile&quot;,
+      &quot;presentation&quot;: {
+        &quot;echo&quot;: true,
+        &quot;reveal&quot;: &quot;silent&quot;,
+        &quot;focus&quot;: false,
+        &quot;panel&quot;: &quot;shared&quot;,
+        &quot;showReuseMessage&quot;: true,
+        &quot;clear&quot;: false
+      }
+    }
+  ]
+}
+</code></pre>
+<p>发布<br>
+https://94zl.com</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[测试]]></title>
+        <id>https://94zl.com/post/ce-shi/</id>
+        <link href="https://94zl.com/post/ce-shi/">
+        </link>
+        <updated>2023-03-12T08:26:51.000Z</updated>
+        <content type="html"><![CDATA[<p>这个人很懒,暂时什么都没有.</p>
+]]></content>
+    </entry>
+</feed>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" >
+
+<title>树莓派4  安装 Home Assistant Supervised | 94zl</title>
+<meta name="description" content="随便记录点什么 - Magian">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="shortcut icon" href="https://94zl.com/favicon.ico?v=1688803544668">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="stylesheet" href="https://unpkg.com/papercss@1.6.1/dist/paper.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://94zl.com/styles/main.css">
+
+
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+<link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+
+
+  </head>
+  <body>
+  
+    <nav class="navbar border fixed split-nav">
+  <div class="nav-brand">
+    <h3><a href="https://94zl.com">94zl</a></h3>
+  </div>
+  <div class="collapsible">
+    <input id="collapsible1" type="checkbox" name="collapsible1">
+    <button>
+      <label for="collapsible1">
+        <div class="bar1"></div>
+        <div class="bar2"></div>
+        <div class="bar3"></div>
+      </label>
+    </button>
+    <div class="collapsible-body">
+      <ul class="inline">
+        
+          <li>
+            
+              <a href="/" class="menu">
+                首页
+              </a>
+            
+          </li>
+        
+          <li>
+            
+              <a href="/archives" class="menu">
+                归档
+              </a>
+            
+          </li>
+        
+          <li>
+            
+              <a href="/tags" class="menu">
+                标签
+              </a>
+            
+          </li>
+        
+          <li>
+            
+              <a href="/post/about" class="menu">
+                关于
+              </a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div id="top" class="row site">
+      <div class="sm-12 md-8 col">
+        <div class="paper">
+          <article class="article">
+            <h1>树莓派4  安装 Home Assistant Supervised</h1>
+            <p class="article-meta">
+              2023-03-27
+              
+                <a href="https://94zl.com/tag/B-6Fvg5HT/" class="badge secondary">
+                  树莓派
+                </a>
+              
+            </p>
+            
+            <div class="post-content" v-pre>
+              <h2 id="默认先决条件">默认先决条件</h2>
+<p>Raspberry Pi OS 64 (debian11)<br>
+已经安装了Docker<br>
+停用冲突的容器,如Portainer<br>
+已拥有梯子</p>
+<h2 id="预编写networkmanager的配置">预编写NetworkManager的配置</h2>
+<p>创建配置目录和文件<br>
+<code>sudo mkdir -p /etc/NetworkManager/conf.d/</code><br>
+对文件追加内容<br>
+<code>sudo nano /etc/NetworkManager/conf.d/100-disable-wifi-mac-randomization.conf</code></p>
+<pre><code>[connection]
+wifi.mac-address-randomization=1
+
+[device]
+wifi.scan-rand-mac-address=no
+</code></pre>
+<h2 id="安装-ha-依赖项">安装 HA 依赖项</h2>
+<pre><code>sudo apt install \
+apparmor \
+jq \
+wget \
+curl \
+udisks2 \
+libglib2.0-bin \
+network-manager \
+dbus \
+lsb-release \
+systemd-journal-remote -y
+</code></pre>
+<h2 id="切换-docker-到-cgroup-v1">切换 Docker 到 Cgroup v1</h2>
+<p>编辑内核配置文件<br>
+<code>sudo nano /boot/cmdline.txt</code><br>
+在末尾添加(不要换行)<br>
+<code>systemd.unified_cgroup_hierarchy=false lsm=apparmor</code></p>
+<h2 id="安装-ha-os-agent">安装 HA OS-Agent</h2>
+<pre><code>wget https://github.com/home-assistant/os-agent/releases/download/1.5.1/os-agent_1.5.1_linux_aarch64.deb
+sudo dpkg -i os-agent_1.5.1_linux_aarch64.deb
+</code></pre>
+<p>安装失败的话,可以直接到桌面系统找到deb双击运行</p>
+<p>检查是否安装成功<br>
+<code>gdbus introspect --system --dest io.hass.os --object-path /io/hass/os</code><br>
+输出完整JSON配置文件,并且没有报错,就算成功了</p>
+<h2 id="重启系统">重启系统</h2>
+<p><code>reboot</code></p>
+<h2 id="安装-home-assistant-supervised">安装 Home Assistant Supervised</h2>
+<pre><code>wget https://github.com/home-assistant/supervised-installer/releases/latest/download/homeassistant-supervised.deb
+sudo apt install ./homeassistant-supervised.deb
+</code></pre>
+<p>安装过程中弹出 界面 选择 <code>raspberrypi4-64</code></p>
+<p>安装完毕后查看系统日志<br>
+<code>journalctl -f</code><br>
+等红色的日志差不多没了 HA 也就初始化好了.</p>
+<h2 id="其他可选">其他(可选)</h2>
+<p>安装 Home Assistant Community Store<br>
+进入容器homeassistant的命令行<br>
+<code>sudo docker exec -it homeassistant bash</code><br>
+下载并直接安装 (2选1)<br>
+原版本 <code>wget -O - https://get.hacs.xyz | bash -</code><br>
+极速版 <code>wget -O - https://hacs.vip/get | HUB_DOMAIN=ghproxy.com/github.com bash -</code></p>
+<p>禁用DNS回退<br>
+<code>sudo ha dns options --fallback=false</code></p>
+<hr>
+<p>参考<br>
+https://zhuanlan.zhihu.com/p/498773266<br>
+https://blog.csdn.net/jeffen0428/article/details/127768637<br>
+https://github.com/home-assistant/supervised-installer</p>
+
+            </div>
+          </article>
+        </div>
+        <div class="paper" data-aos="fade-in">
+          
+            <div class="next-post">
+              <div class="next">
+                下一篇
+              </div>
+              <a href="https://94zl.com/post/visual-studio-2022-zhi-jie-yun-xing-diao-shi-godot4-c-xiang-mu/">
+                <h3 class="post-title">
+                  Visual Studio 2022/Code 直接运行调试 Godot4 C# 项目
+                </h3>
+              </a>
+            </div>
+          
+        </div>
+        
+      </div>
+
+      <div class="sm-12 md-4 col sidebar">
+  <div class="paper info-container">
+    <img src="https://94zl.com/images/avatar.png?v=1688803544668" class="no-responsive avatar">
+    <div class="text-muted">随便记录点什么 - Magian</div>
+    <div class="social-container">
+      
+        
+          <a href="https://github.com/magian1127" target="_blank">
+            <i class="fab fa-github"></i>
+          </a>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </div>
+  </div>
+  <div class="paper">
+    <div class="sidebar-title">
+      最新文章
+    </div>
+    <div class="row">
+      <ul>
+        
+          
+            <li>
+              <a href="https://94zl.com/post/jie-jue-vs2022-net-7-xiang-mu-zhong-de-t4-mo-ban-wu-fa-yin-yong-qi-ta-cheng-xu-ji-de-wen-ti/">解决 VS2022 .NET 7 项目中的 T4 模版无法引用其他程序集的问题</a>
+            </li>
+          
+        
+          
+            <li>
+              <a href="https://94zl.com/post/shu-mei-pai-4-raspberry-pi-os-an-zhuang-home-assistant-supervised/">树莓派4  安装 Home Assistant Supervised</a>
+            </li>
+          
+        
+          
+            <li>
+              <a href="https://94zl.com/post/visual-studio-2022-zhi-jie-yun-xing-diao-shi-godot4-c-xiang-mu/">Visual Studio 2022/Code 直接运行调试 Godot4 C# 项目</a>
+            </li>
+          
+        
+          
+            <li>
+              <a href="https://94zl.com/post/ce-shi/">测试</a>
+            </li>
+          
+        
+          
+            <li>
+              <a href="https://94zl.com/post/about/">关于</a>
+            </li>
+          
+        
+      </ul>
+    </div>
+  </div>
+  <div class="paper">
+    <div class="sidebar-title">
+      标签列表
+    </div>
+    <div class="row">
+      
+        <a href="https://94zl.com/tag/B-6Fvg5HT/" class="badge success">
+          树莓派
+        </a>
+      
+        <a href="https://94zl.com/tag/go29kVbme/" class="badge success">
+          Godot
+        </a>
+      
+    </div>
+  </div>
+  <div class="paper">
+    Godot QQ交流群 79074766
+<br>
+Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>,Github | <a class="rss" href="https://94zl.com/atom.xml" target="_blank">RSS</a>
+  </div>
+</div>
+
+
+    </div>
+
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+
+<script type="application/javascript">
+
+AOS.init();
+
+hljs.initHighlightingOnLoad()
+
+</script>
+
+
+
+
+  </body>
+</html>
